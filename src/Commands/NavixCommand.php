@@ -1,12 +1,12 @@
 <?php
 
-namespace VendorName\Skeleton\Commands;
+namespace Abolaradev\Navix\Commands;
 
 use Illuminate\Console\Command;
 
-class SkeletonCommand extends Command
+class NavixCommand extends Command
 {
-    public $signature = 'skeleton';
+    public $signature = 'navix';
 
     public $description = 'My command';
 
