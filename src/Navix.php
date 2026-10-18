@@ -2,4 +2,178 @@
 
 namespace Abolaradev\Navix;
 
-class Navix {}
+use Closure;
+use Illuminate\Support\Collection;
+
+class Navix
+{
+    /**
+     * The name of the currently active navigation batch.
+     */
+    private ?string $currentBatch;
+
+    /**
+     * All registered navigation batches.
+     *
+     * @var Collection<string, Collection>
+     */
+    private Collection $batches;
+
+    /**
+     * The navigation item currently being configured.
+     *
+     * @var Collection<string, mixed>
+     */
+    private Collection $item;
+
+    /**
+     * Stack of parent navigation items used to resolve nested groups.
+     *
+     * @var Collection<int, Collection>
+     */
+    private Collection $parentStack;
+
+    /**
+     * Create a new Navix instance.
+     */
+    public function __construct()
+    {
+        $this->currentBatch = null;
+        $this->batches = collect();
+        $this->item = collect();
+        $this->parentStack = collect();
+    }
+
+    /**
+     * Register a navigation batch.
+     *
+     * @param string $batch
+     * @param Closure(): void $callable
+     * @return void
+     */
+    public function batch(string $batch, Closure $callable)
+    {
+        $this->currentBatch = $batch;
+        $this->batches->put($batch, collect());
+
+        $callable();
+
+        $this->currentBatch = null;
+    }
+
+    /**
+     * Set the label of the current navigation item.
+     *
+     * @param string $label
+     * @return static
+     */
+    public function label(string $label): static
+    {
+        $this->item->put('label', $label);
+
+        return $this;
+    }
+
+    /**
+     * Set the icon of the current navigation item.
+     *
+     * @param string $icon
+     * @return static
+     */
+    public function icon(string $icon): static
+    {
+        $this->item->put('icon', $icon);
+
+        return $this;
+    }
+
+    /**
+     * Set the badge of the current navigation item.
+     *
+     * @param string|int $badge
+     * @return static
+     */
+    public function badge(string|int $badge): static
+    {
+        $this->item->put('badge', $badge);
+
+        return $this;
+    }
+
+    /**
+     * Set the URL of the current navigation item.
+     *
+     * @param string $path
+     * @param array<string, mixed> $query
+     * @param array<string, mixed> $parameters
+     * @return static
+     */
+    public function url(string $path, array $query = [], array $parameters = []): static
+    {
+        $this->item->put('url', url()->query(
+            path: $path,
+            query: $query,
+            extra: $parameters
+        ));
+
+        return $this;
+    }
+
+    /**
+     * Add the current navigation item to its target collection.
+     *
+     * @return void
+     */
+    public function add()
+    {
+        $this->resolveTarget()->push($this->item);
+
+        $this->item = collect();
+    }
+
+    /**
+     * Create a group containing nested navigation items.
+     *
+     * @param Closure(): void $callable
+     * @return void
+     */
+    public function group(Closure $callable)
+    {
+        $this->item->put('sub_items', collect());
+
+        $this->resolveTarget()->push($this->item);
+
+        $this->parentStack->push($this->item);
+
+        $this->item = collect();
+
+        try {
+            $callable();
+        } finally {
+            $this->parentStack->pop();
+        }
+    }
+
+    /**
+     * Get a navigation batch by its name.
+     *
+     * @param string $batch
+     * @return Collection
+     */
+    public function getBatch(string $batch): Collection
+    {
+        return $this->batches->get($batch, collect());
+    }
+
+    /**
+     * Resolve the collection that should receive the current navigation item.
+     *
+     * @return Collection
+     */
+    private function resolveTarget(): Collection
+    {
+        return $this->parentStack->isEmpty()
+            ? $this->batches->get($this->currentBatch)
+            : $this->parentStack->last()->get('sub_items');
+    }
+}
