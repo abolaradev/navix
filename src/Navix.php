@@ -2,8 +2,8 @@
 
 namespace Abolaradev\Navix;
 
+use Abolaradev\Navix\Collections\NavixCollection;
 use Closure;
-use Illuminate\Support\Collection;
 
 class Navix
 {
@@ -15,23 +15,23 @@ class Navix
     /**
      * All registered navigation batches.
      *
-     * @var Collection<string, Collection>
+     * @var NavixCollection<string, NavixCollection>
      */
-    private Collection $batches;
+    private NavixCollection $batches;
 
     /**
      * The navigation item currently being configured.
      *
-     * @var Collection<string, mixed>
+     * @var NavixCollection<string, mixed>
      */
-    private Collection $item;
+    private NavixCollection $item;
 
     /**
      * Stack of parent navigation items used to resolve nested groups.
      *
-     * @var Collection<int, Collection>
+     * @var NavixCollection<int, NavixCollection>
      */
-    private Collection $parentStack;
+    private NavixCollection $parentStack;
 
     /**
      * Create a new Navix instance.
@@ -39,9 +39,9 @@ class Navix
     public function __construct()
     {
         $this->currentBatch = null;
-        $this->batches = collect();
-        $this->item = collect();
-        $this->parentStack = collect();
+        $this->batches = navixCollect();
+        $this->item = navixCollect();
+        $this->parentStack = navixCollect();
     }
 
     /**
@@ -51,10 +51,10 @@ class Navix
      * @param Closure(): void $callable
      * @return void
      */
-    public function batch(string $batch, Closure $callable)
+    public function batch(string $batch, Closure $callable): void
     {
         $this->currentBatch = $batch;
-        $this->batches->put($batch, collect());
+        $this->batches->put($batch, navixCollect());
 
         $callable();
 
@@ -124,11 +124,11 @@ class Navix
      *
      * @return void
      */
-    public function add()
+    public function add(): void
     {
         $this->resolveTarget()->push($this->item);
 
-        $this->item = collect();
+        $this->item = navixCollect();
     }
 
     /**
@@ -137,15 +137,15 @@ class Navix
      * @param Closure(): void $callable
      * @return void
      */
-    public function group(Closure $callable)
+    public function group(Closure $callable): void
     {
-        $this->item->put('sub_items', collect());
+        $this->item->put('sub_items', navixCollect());
 
         $this->resolveTarget()->push($this->item);
 
         $this->parentStack->push($this->item);
 
-        $this->item = collect();
+        $this->item = navixCollect();
 
         try {
             $callable();
@@ -158,11 +158,11 @@ class Navix
      * Get a navigation batch by its name.
      *
      * @param string $batch
-     * @return Collection
+     * @return NavixCollection
      */
-    public function getBatch(string $batch , ?string $search = null): Collection
+    public function getBatch(string $batch , ?string $search = null): NavixCollection
     {
-        $items = $this->batches->get($batch, collect());
+        $items = $this->batches->get($batch, navixCollect());
 
         return $this->search($items,$search);
     }
@@ -170,9 +170,9 @@ class Navix
     /**
      * Resolve the collection that should receive the current navigation item.
      *
-     * @return Collection
+     * @return NavixCollection
      */
-    private function resolveTarget(): Collection
+    private function resolveTarget(): NavixCollection
     {
         return $this->parentStack->isEmpty()
             ? $this->batches->get($this->currentBatch)
@@ -185,7 +185,7 @@ class Navix
      * The search is case-insensitive and preserves parent groups
      * when any of their nested items match the search term.
      */
-    private function search(Collection $items, ?string $search=null): Collection
+    private function search(NavixCollection $items, ?string $search=null): NavixCollection
     {
         if(is_null($search)){
             return $items;
