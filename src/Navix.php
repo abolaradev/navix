@@ -160,9 +160,11 @@ class Navix
      * @param string $batch
      * @return Collection
      */
-    public function getBatch(string $batch): Collection
+    public function getBatch(string $batch , ?string $search = null): Collection
     {
-        return $this->batches->get($batch, collect());
+        $items = $this->batches->get($batch, collect());
+
+        return $this->search($items,$search);
     }
 
     /**
@@ -175,5 +177,37 @@ class Navix
         return $this->parentStack->isEmpty()
             ? $this->batches->get($this->currentBatch)
             : $this->parentStack->last()->get('sub_items');
+    }
+
+    /**
+     * Search for menu items by label, including nested sub-items.
+     *
+     * The search is case-insensitive and preserves parent groups
+     * when any of their nested items match the search term.
+     */
+    private function search(Collection $items, ?string $search=null): Collection
+    {
+        if(is_null($search)){
+            return $items;
+        }
+
+        return $items->filter(function ($values) use ($search) {
+        
+            $search = strtolower($search);
+            $label = strtolower($values->get('label', ''));
+            
+            if (str_contains($label, $search)) {
+                return true;
+            }
+
+            if ($values->has('subItems')) {
+                return $this->search(
+                    $values->get('subItems'),
+                    $search
+                )->isNotEmpty();
+            }
+
+            return false;
+        });
     }
 }
