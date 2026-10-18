@@ -4,21 +4,28 @@ namespace Abolaradev\Navix;
 
 use Illuminate\Support\ServiceProvider;
 use Abolaradev\Navix\Commands\NavixCommand;
-use Livewire\Livewire;
-use Illuminate\Support\Facades\Blade;
 
 class NavixServiceProvider extends ServiceProvider
-{
+{    
+    /**
+     * Register the navigation file
+     *
+     * @param  string $path
+     * @return void
+     */
+    private function loadNavigationFrom(string $path): void 
+    {
+        if(file_exists($path)){
+            require $path;
+        }
+    }
+
      /**
      * Register any application services.
      */
     public function register(): void
     {
-        // Merge package configuration.
-        $this->mergeConfigFrom(
-            __DIR__.'/../config/navix.php',
-            'navix'
-        );
+        $this->app->singleton(Navix::class);
     }
 
     /**
@@ -26,17 +33,13 @@ class NavixServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Load the navigation file
+        $this->loadNavigationFrom(__DIR__."/../navigation/navix.php");
+
         // Publishing is only available when running from the console
         if (! $this->app->runningInConsole()) {
             return;
         }
-
-        // Publish the package configuration file
-        $this->publishes([
-            __DIR__.'/../config/navix.php' => config_path('navix.php'),
-        ], ['navix', 'navix-config']);
-
-        
 
         // Register the package Artisan commands
         $this->commands([
